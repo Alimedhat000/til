@@ -37,7 +37,7 @@ The page table is an in-memory _hash table_ that keeps track of the pages curr
 
 > *If you are focusing and not scrolling throw TikTok like i do, You will probably ask this question*
 >
- >*What the difference between **Page Table** and  [[Storage in DBMS#Heap File Organization|Page Directory]]*
+ >*What the difference between **Page Table** and  [[03 - Storage in DBMS#Heap File Organization|Page Directory]]*
  >
  >***Page Table:** is the mapping from page ids to a copy of the page in buffer pool frames. This is an **in-memory** data structure that does not need to be stored on disk.*
  >

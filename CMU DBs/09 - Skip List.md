@@ -21,3 +21,20 @@ If the skip list is **singly linked** (i.e., forward-only pointers), each level'
 Go to the top-level linked list and traverse until the value is about to be greater than the target. Then go down to the next level and traverse the same way until it reaches the bottom list and then the target key.
 
 ![[Pasted image 20250524003555.png | center]]
+
+
+### Delete 
+
+At first, a node is marked as deleted (*Soft Deleted*) instead of removed from the data structure to prevent other reader threads from visiting the dead object. Any reader can ignore the deleted node and keep traversing the way down. Later when the node object is to be deleted, the top node will be removed before the bottom one to keep the data structure intact.
+
+![[9v2rsl.gif|center|600]]
+
+### Conclusion
+
+- Advantages: 
+	- Uses less memory than a typical B+Tree if you do not include reverse pointers. 
+	- Insertions and deletions do not require rebalancing.
+
+- Disadvantages: 
+	- Not disk/cache friendly because they do not optimize locality of references.
+	- Reverse search is non-trivial.

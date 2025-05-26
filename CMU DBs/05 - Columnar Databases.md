@@ -1,6 +1,6 @@
 ### Introduction
 
-In the [previous lesson](obsidian://open?vault=MyVault&file=03%20-%20Resources%2FCMU%20DBs%2FStorage%20in%20DBMS), we focused on disk-oriented DBMS and how tuples are stored within pages using different approaches such as the Tuple Oriented Approach, Slotted Pages Approach, and the Log-Structured Approach. In this lesson, we will explore alternative methods for representing data to meet the needs of different workloads.
+In the previous lesson, we focused on disk-oriented DBMS and how tuples are stored within pages using different approaches such as the Tuple Oriented Approach, Slotted Pages Approach, and the Log-Structured Approach. In this lesson, we will explore alternative methods for representing data to meet the needs of different workloads.
 
 ### Database Workloads
 
