@@ -1,48 +1,3 @@
-## What Are User Authentication Choices?
-
-When building secure applications, authenticating users is a key step. There are several common methods used to manage authentication. Below are three popular choices:
-
-1. Session-Based Authentication
-How it works: When a user logs in, the server creates a session and stores it (typically in memory or a database). A session ID is then sent to the user's browser via a cookie.
-
-On each request: The cookie is sent with every HTTP request, allowing the server to verify the session ID and identify the user.
-
-- Pros:
-	- Secure (especially when used with HTTPS and HTTP-only cookies)
-	- Server can easily invalidate sessions
-
-- Cons:
-	- Requires server-side storage
-	- Not ideal for scalable or distributed systems without extra setup (e.g., shared session store like Redis)
-
-2. JWT (JSON Web Token) Authentication
-How it works: After a successful login, the server generates a signed JWT containing user data and sends it to the client. The client stores this token (usually in localStorage or sessionStorage).
-
-On each request: The token is sent in the Authorization header.
-
-- Pros:
-	- Stateless and scalable — no server-side session storage needed
-	- Can contain user roles and claims inside the token
-
-- Cons:
-	- Cannot easily revoke tokens unless you implement a token blacklist
-	- Larger token size due to payload
-
-3. OAuth (Open Authorization)
-How it works: Used for granting third-party applications limited access to user data without exposing credentials. Often used with "Login with Google/Facebook/etc."
-
-Flow: Involves redirecting the user to an authorization server, granting permissions, then receiving an access token.
-
-- Pros:
-	- Widely adopted and secure when implemented correctly
-	- Great for integrating with third-party APIs
-
-- Cons:
-	- More complex to implement
-	- Requires handling token expiration and refresh logic
-
-
----
 ## What is Passport JS?
 
 **Passport.js** is a popular **authentication middleware for Node.js**. It provides a flexible and modular approach to authenticate requests in your Node.js applications.
@@ -52,61 +7,109 @@ Flow: Involves redirecting the user to an authorization server, granting permiss
 - Passport is **middleware** used in Express or similar frameworks.
 - It doesn’t handle sessions, cookies, or user management directly — instead, it gives you **tools to plug into these systems**.
 - Think of it like a plug-and-play system where you choose what *strategy* you want to authenticate users with.
+
 ###  Passport Strategies ??
 
 A **strategy** in Passport.js defines **how a user is authenticated**. Passport supports hundreds of strategies to authenticate users in different ways — from local login forms to third-party services like Google, Facebook, and GitHub.
 
-|Strategy Type|Example Strategies|Description|
-|---|---|---|
-|Local|`passport-local`|Username/password login|
-|Token-based|`passport-jwt`|JWT bearer token auth for APIs|
-|OAuth2|`passport-google-oauth20`, etc.|Third-party social logins|
-|SSO/Enterprise|`passport-saml`, `passport-ldap`|Enterprise-level authentication|
+| Strategy Type  | Example Strategies               | Description                     |
+| -------------- | -------------------------------- | ------------------------------- |
+| Local          | `passport-local`                 | Username/password login         |
+| Token-based    | `passport-jwt`                   | JWT bearer token auth for APIs  |
+| OAuth2         | `passport-google-oauth20`, etc.  | Third-party social logins       |
+| SSO/Enterprise | `passport-saml`, `passport-ldap` | Enterprise-level authentication |
+
+### Middleware Flow
+This is where you actually apply auth to your user’s experience. The middleware has three parts: setup, the login flow, and “the see if they’re logged in or not” bit.
+
+#### 1. Setup
+
+In your main app file:
+
+```js
+app.use(passport.initialize())
+app.use(passport.session())
+```
+
+- `passport.initialize()` creates the passport object on the request and defines where the shorthand user is located on the `req` object (defaults to `req.user`).
+
+- `passport.session()` sets up calls the serialize && deserialize methods (we’ll talk about those later) and interacts with express-session. You have to have `app.use`d express-session before this or it will freak out.
+#### 2.Login flow
+
+Here you add a “begin login for this flow” URL. If you’re using multiple strategies, you’ll want a separate login URL for each. The `passport.authenticate(‘something’)` is used here, where `something` is the internal name of the strategy.
+
+```js title:LocalStrategy
+app.post('/login', passport.authenticate('local', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login',
+}));
+```
+
+Many strategies also have a second endpoint for handling the callback from that authentication flow. Take the `FacebookStrategy`: this `returnUrl` handler takes the special parameters that come back in the URL and make calls to the Facebook API (using API Key configuration you defined in the Strategy config) and get back the `profile`. This `profile` is what you get back in the Strategy handler (I said remember it).
+```js title:OAuth
+// Step 1: Redirect to Google
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
+
+// Step 2: Handle callback
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    res.redirect('/dashboard');
+  }
+);
+
+```
+
+#### 3. Authentication Check Middleware
+
+This is middleware you put in yourself. At any endpoint, you can add a check that ensures they’re logged in or not, by a check to `req.isAuthenticated()`. If the endpoint is protected, don’t forget to make sure it’s protected with this middleware. Otherwise, anyone will be allowed to use that endpoint.
+
+```js
+app.get("/dashboard",(req,res)=>{
+	if (req.isAuthenticated){
+		//Continue to Page
+	}
+	else{
+		res.redirect('/login')
+	}
+})
+```
+
+### Session
+
+So remember when during the strategy setup, you created (or found) the user and returned your “local representation of that user”? Well you need to do that again, based on the session information, since they’re not logging in every time.
+
+#### deserializeUser
+
+This method is called during the `passport.session()` step. It accepts the session token (what comes out of serializeUser) and returns either the “local representation of the user” or `false` (not logged in). This is called on every request, logged in or not.
+
+```js
+passport.deserializeUser((id, done) => {
+  User.findById(id).then(user => {
+    done(null, user); // attach user object to req.user
+  }).catch(err => done(err));
+});
+```
+
+#### serializeUser
+
+This method is called RIGHT AFTER the Strategy handler. It accepts the “local representation of the user” and it should return a `string` (usually). That string is stored in the session as the identifier for the user, and it is what is passed into `deserializeUser` the next time this user makes a request. The output `string` should be “strategy agnostic”. The string ALONE should be enough to tell you how to look this user up in your database.
+
+```js
+passport.serializeUser((user, done) => {
+  done(null, user.id); // store user ID in session
+});
+```
 
 
----
-## HTTP Headers and Cookies  
+#### Logout 
+In Passport v0.6.0+, you **must provide a callback** to `req.logout()`:
+```js
+app.get('/logout', (req, res, next) => {
+  req.logout(function(err) {
+    if (err) return next(err);
+    res.redirect('/');
+  });
+});
 
-When implementing user authentication, understanding HTTP headers and cookies is essential. These components enable the secure exchange of data between the client and server, particularly in session-based and token-based authentication systems.
-
-### HTTP Headers
-
-HTTP headers are metadata included in both HTTP requests and responses. They allow the client and server to share additional information beyond the core request and response payloads. The following headers are commonly used in authentication:
-
-- **Authorization**  
-    Used to transmit credentials or tokens in request headers.
-    
-    `Authorization: Bearer <JWT>`
-
-	Commonly utilized in token-based authentication, particularly with JWT.
-    
-- **Set-Cookie**  
-    Sent by the server to instruct the client to store a cookie.
-
-    `Set-Cookie: sessionId=abc123; HttpOnly; Secure; SameSite=Strict`
-    
-- **Cookie**  
-    Sent automatically by the client with each request after a cookie has been set.
-    `Cookie: sessionId=abc123`
-    
-
----
-
-### Cookies
-
-Cookies are small data fragments stored in the user's browser. In authentication workflows, they are often used to persist session identifiers or tokens.
-
-#### Key Attributes:
-
-- **HttpOnly**: Restricts JavaScript access to the cookie, mitigating XSS attacks.
-
-- **Secure**: Ensures cookies are only transmitted over HTTPS.
-
-- **SameSite**: Controls whether cookies are sent with cross-site requests. Options include:
-    - `Strict`: Cookie is not sent with cross-site requests.
-    - `Lax`: Allows some cross-site requests (e.g., top-level navigation).
-    - `None`: Cookies are sent with all requests (requires `Secure` flag).
-
-
----
-## Express Session Library
+```
