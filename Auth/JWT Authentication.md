@@ -46,12 +46,14 @@ This makes JWT better suited for **distributed systems** and **microservices**, 
 
 A JWT consists of **three parts**, separated by dots (`.`):
 
-1. **Header** – contains the type of token (JWT) and the signing algorithm (e.g., HS256).
-2. **Payload** – contains the claims, i.e., the data we want to transmit (user ID, email, roles, etc.).
-3. **Signature** – created using the header and payload along with the secret key allows us to know that the token hasn't been changed by the client.
+1. **Header** – contains the type of token (JWT) and the signing algorithm (e.g., HS256, RS256).
+2. **Payload** – contains the claims, i.e., the data we want
+3. to transmit (user ID, email, roles, password etc.).
+4. **Signature** – created using the header and payload along with the secret key allows us to know that the token hasn't been changed by the client.
+   
+![[Pasted image 20250702175145.png|center]]
 
 
 ### **JWT in NodeJS and Express**:
 
-1. Install `express`, `jsonwebtoken` and `dotenv`
-2. Initialize a basic express app 
+There’s no one right way to do JWT auth in express but using `passport-jwt` as the middleware with `jsonwebtoken` NPM module 
