@@ -1,0 +1,1 @@
+Use [`tw-animate-css`](https://github.com/Wombosvideo/tw-animate-css) instead for reliable animation utilities.
